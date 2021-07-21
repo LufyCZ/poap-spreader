@@ -1,5 +1,5 @@
 import { Client, StageChannel, User } from 'discord.js';
-import { readFileSync, appendFileSync, writeFileSync } from 'fs';
+import { readFileSync, appendFileSync, writeFileSync, writeFile } from 'fs';
 import { RateLimiter } from 'limiter';
 
 const AMA_CHANNEL_ID = "808605618285445120"// "827196357290229801"
@@ -15,7 +15,10 @@ const requiredLogs = 2;
 
 const limiter = new RateLimiter({ tokensPerInterval: 20, interval: 60000 });
 
+const poapsLength = poaps.length
+
 let changingAccounts = false;
+let poapsSent = 0;
 
 main()
 
@@ -33,6 +36,7 @@ async function main() {
             if(users[user.id] === requiredLogs) sendMessage(user.id);
         })
 
+        writeFile("unusedPoaps.txt", JSON.stringify(poaps), {encoding: 'utf-8'}, () => {})
         await sleep(delay * 1000);
     }
 }
@@ -63,6 +67,7 @@ async function collectUsers() {
 }
 
 async function sendMessage(userId: any) {
+    await waitForAccountChange()
     const user = await client.users.fetch(userId, false)
     await limiter.removeTokens(1);
     const poap = getPoap();
@@ -70,6 +75,7 @@ async function sendMessage(userId: any) {
     if(poap) {
         try {
             await user.send(poap + "\n\n" + message);
+            console.log(`Poaps sent: ${poapsLength - poaps.length}`)
         }
         catch(err) {
             reAddPoap(poap);
@@ -101,11 +107,12 @@ function sleep(ms: number) {
 }
 
 function getPoap() {
-    return poaps.shift()
+    poapsSent++;
+    return poaps.shift();
 }
 
 function reAddPoap(poap: string) {
-    poaps.push(poap)
+    poaps.push(poap);
 }
 
 async function waitForAccountChange() {
